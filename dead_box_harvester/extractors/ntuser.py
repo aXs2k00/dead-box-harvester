@@ -70,34 +70,27 @@ class NTUSERParser(BaseExtractor):
         self.mount_point = mount_point
     
     def find_ntuser_files(self) -> List[Path]:
-        """Find all NTUSER.DAT files in user profiles"""
+        """Find all NTUSER.DAT files recursively in backup"""
         ntuser_files = []
         
-        users_path = self.mount_point / "Users"
-        if not users_path.exists():
-            logger.warning(f"Users directory not found: {users_path}")
-            return ntuser_files
-        
-        for user_dir in users_path.iterdir():
-            if not user_dir.is_dir():
-                continue
-            
-            # Skip system directories
-            if user_dir.name in ['Public', 'Default', 'Default User', 'All Users']:
-                continue
-            
-            # Primary NTUSER.DAT
-            ntuser = user_dir / "NTUSER.DAT"
-            if ntuser.exists():
-                ntuser_files.append(ntuser)
-                logger.log_artifact("ntuser_dat", str(ntuser))
-            
-            # NTUSER.DAT.LOG1 (transaction log)
-            ntuser_log = user_dir / "NTUSER.DAT.LOG1"
-            if ntuser_log.exists():
-                ntuser_files.append(ntuser_log)
+        # Recursively search entire backup for NTUSER.DAT files
+        for ntuser_path in self.mount_point.rglob("NTUSER.DAT"):
+            if ntuser_path.is_file():
+                ntuser_files.append(ntuser_path)
+                logger.log_artifact("ntuser_dat", str(ntuser_path))
                 
-        logger.info(f"Found {len(ntuser_files)} NTUSER files")
+            # Also check for NTUSER.DAT.LOG1
+            log_path = ntuser_path.parent / "NTUSER.DAT.LOG1"
+            if log_path.exists():
+                ntuser_files.append(log_path)
+        
+        # Also find USRCLASS.DAT (user class registry)
+        for usrclass_path in self.mount_point.rglob("USRCLASS.DAT"):
+            if usrclass_path.is_file():
+                ntuser_files.append(usrclass_path)
+                logger.log_artifact("usrclass_dat", str(usrclass_path))
+        
+        logger.info(f"Found {len(ntuser_files)} registry files")
         return ntuser_files
     
     def extract(self) -> List[Dict[str, Any]]:
