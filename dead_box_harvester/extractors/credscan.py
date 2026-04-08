@@ -41,10 +41,12 @@ class CredentialFileScanner(BaseExtractor):
         CredentialPattern("mongo_conn", r"(?i)mongodb(\+srv)?://[^:]+:[^@]+@", 0.85, "connection_string"),
         CredentialPattern("redis_conn", r"(?i)redis://[^:]+:[^@]+@", 0.85, "connection_string"),
         CredentialPattern("mssql_conn", r"(?i)Server=[^;]+;Database=[^;]+;User Id=[^;]+;Password=[^;]+", 0.85, "connection_string"),
+        CredentialPattern("oracle_conn", r"(?i)(Data Source|Host)=[^;]+;.*User ID=[^;]+;Password=", 0.85, "connection_string"),
         
         # Tokens
         CredentialPattern("github_token", r"ghp_[a-zA-Z0-9]{36}", 0.99, "token"),
         CredentialPattern("github_oauth", r"gho_[a-zA-Z0-9]{36}", 0.99, "token"),
+        CredentialPattern("github_app_token", r"ghu_[a-zA-Z0-9]{36}", 0.99, "token"),
         CredentialPattern("gitlab_token", r"glpat-[a-zA-Z0-9\-]{20,}", 0.99, "token"),
         CredentialPattern("slack_token", r"xox[baprs]-[a-zA-Z0-9\-]+", 0.99, "token"),
         CredentialPattern("slack_webhook", r"https://hooks\.slack\.com/services/T[a-zA-Z0-9]+/B[a-zA-Z0-9]+/[a-zA-Z0-9]+", 0.95, "webhook"),
@@ -57,16 +59,19 @@ class CredentialFileScanner(BaseExtractor):
         CredentialPattern("dsa_private_key", r"-----BEGIN DSA PRIVATE KEY-----", 0.99, "private_key"),
         CredentialPattern("openssh_key", r"-----BEGIN OPENSSH PRIVATE KEY-----", 0.99, "private_key"),
         CredentialPattern("pem_cert", r"-----BEGIN CERTIFICATE-----", 0.90, "certificate"),
+        CredentialPattern("pkcs8_key", r"-----BEGIN PRIVATE KEY-----", 0.99, "private_key"),
         
         # Generic passwords in configs
         CredentialPattern("password_assignment", r"(?i)(password|passwd|pwd)[\s]*[=:]+[\s]*['\"]?([^\s'\"]{4,})", 0.70, "password"),
         CredentialPattern("secret_assignment", r"(?i)(secret|token)[\s]*[=:]+[\s]*['\"]?([^\s'\"]{8,})", 0.70, "secret"),
+        CredentialPattern("credential_assignment", r"(?i)(credential|cred)[\s]*[=:]+[\s]*['\"]?([^\s'\"]{8,})", 0.70, "credential"),
         
         # Environment variables
         CredentialPattern("env_password", r"(?i)(PASSWORD|SECRET|API_KEY|TOKEN)[\s]*=[\s]*['\"]?([a-zA-Z0-9_\-]{8,})", 0.65, "env_var"),
         
         # SSH config
         CredentialPattern("ssh_key_file", r"(?i)(IdentityFile|PrivateKey)[\s]+", 0.80, "ssh"),
+        CredentialPattern("ssh_password", r"(?i)SSH_PASSWORD[\s]*[=:]+", 0.85, "ssh"),
         
         # JWT tokens
         CredentialPattern("jwt_token", r"eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*", 0.90, "token"),
@@ -89,24 +94,95 @@ class CredentialFileScanner(BaseExtractor):
         
         # NPM/token
         CredentialPattern("npm_token", r"npm_[a-zA-Z0-9]{36}", 0.95, "token"),
+        
+        # Google API
+        CredentialPattern("google_api_key", r"AIza[0-9A-Za-z_\-]{35}", 0.99, "api_key"),
+        CredentialPattern("google_oauth", r"[0-9]+-[a-zA-Z0-9]{32}\.apps\.googleusercontent\.com", 0.95, "oauth"),
+        
+        # Facebook
+        CredentialPattern("facebook_token", r"EAACEdEose0cBA[0-9A-Za-z]+", 0.95, "token"),
+        
+        # PayPal
+        CredentialPattern("paypal_key", r"A20[a-zA-Z0-9]{20,}", 0.85, "api_key"),
+        
+        # Square
+        CredentialPattern("square_token", r"sq0atp-[0-9A-Za-z_\-]{22}", 0.95, "token"),
+        
+        # Mailchimp
+        CredentialPattern("mailchimp_key", r"[a-zA-Z0-9]{32}-us[0-9]{1,2}", 0.90, "api_key"),
+        
+        # Mailgun
+        CredentialPattern("mailgun_key", r"key-[a-zA-Z0-9]{32}", 0.95, "api_key"),
+        
+        # Twilio
+        CredentialPattern("twilio_sid", r"AC[a-zA-Z0-9]{32}", 0.95, "api_key"),
+        
+        # Fastly
+        CredentialPattern("fastly_token", r"[a-zA-Z0-9_\-]{32}", 0.75, "token"),
+        
+        # Shopify
+        CredentialPattern("shopify_key", r"shpat_[a-f0-9]{32}", 0.95, "api_key"),
+        
+        # WooCommerce
+        CredentialPattern("woocommerce_key", r"ck_[a-zA-Z0-9]{32}", 0.90, "api_key"),
+        
+        # Database embedded passwords
+        CredentialPattern("jdbc_password", r"(?i)jdbc:.*password=[^;]+", 0.85, "connection_string"),
+        CredentialPattern("odbc_password", r"(?i)driver=.*pwd=[^;]+", 0.80, "connection_string"),
+        
+        # Ansible vault
+        CredentialPattern("ansible_vault", r"\$ANSIBLE_VAULT;[0-9]+;", 0.90, "secret"),
+        
+        # Kubernetes/Container
+        CredentialPattern("kubeconfig_token", r"(?i)token:.*[a-zA-Z0-9_\-\.]{20,}", 0.80, "token"),
+        CredentialPattern("docker_config", r"(?i)\"auth\":\s*\"[a-zA-Z0-9+/=]+\"", 0.85, "auth"),
+        
+        # Generic bearer tokens
+        CredentialPattern("bearer_token", r"(?i)Bearer\s+[a-zA-Z0-9_\-\.]{20,}", 0.80, "token"),
+        
+        # Basic auth
+        CredentialPattern("basic_auth", r"(?i)Authorization:\s*Basic\s+[a-zA-Z0-9+/=]+", 0.85, "auth"),
+        
+        # FTP credentials
+        CredentialPattern("ftp_url", r"ftp://[^:]+:[^@]+@", 0.90, "connection_string"),
+        
+        # S3 credentials
+        CredentialPattern("s3_url", r"s3://[A-Za-z0-9]+:[a-zA-Z0-9+/=]+@[a-zA-Z0-9\-\.]+", 0.90, "storage"),
+        
+        # GCP
+        CredentialPattern("gcp_service_account", r"\"type\":\s*\"service_account\"", 0.85, "credential"),
     ]
     
-    # File extensions to scan
-    SCAN_EXTENSIONS = {
-        '.py', '.js', '.ts', '.json', '.yml', '.yaml', '.xml', '.conf', '.ini',
-        '.cfg', '.config', '.properties', '.env', '.txt', '.sh', '.bat', '.ps1',
-        '.sql', '.rb', '.go', '.rs', '.java', '.cs', '.php', '.asp', '.aspx',
-        '.htm', '.html', '.md', '.log', '.key', '.pem', '.cert', '.crt'
+    # Text file extensions to scan with full regex
+    TEXT_EXTENSIONS = {
+        '.py', '.js', '.ts', '.jsx', '.tsx', '.json', '.yml', '.yaml', '.xml', 
+        '.conf', '.ini', '.cfg', '.config', '.properties', '.env', '.txt', 
+        '.sh', '.bat', '.ps1', '.sql', '.rb', '.go', '.rs', '.java', '.cs', 
+        '.php', '.asp', '.aspx', '.htm', '.html', '.md', '.log', '.key', 
+        '.pem', '.cert', '.crt', '.cer', '.p12', '.pfx', '.toml', '.gradle',
+        '.groovy', '.dart', '.swift', '.kt', '.scala', '.r', '.pl', '.lua',
+        '.vue', '.svelte', '.jsx', '.tsx', '.coffee', '.erb', '.haml'
+    }
+    
+    # Binary files to scan for embedded strings (smaller set, memory-safe)
+    BINARY_EXTENSIONS = {
+        '.exe', '.dll', '.so', '.dylib', '.bin', '.dat', '.db', '.sqlite',
+        '.mdb', '.accdb', '.zip', '.tar', '.gz', '.rar', '.7z',
     }
     
     # Directories to skip
     SKIP_DIRS = {
         'node_modules', '.git', '.svn', '__pycache__', 'venv', 'env', '.venv',
-        'build', 'dist', 'target', '.idea', '.vscode', 'bin', 'obj'
+        'build', 'dist', 'target', '.idea', '.vscode', 'bin', 'obj', '.gradle',
+        'node_modules', 'bower_components', 'vendor', 'packages', '.npm',
+        '.cache', '.parcel-cache', '.next', '.nuxt', '.svelte-kit'
     }
     
-    # Max file size to scan (5MB)
-    MAX_FILE_SIZE = 5 * 1024 * 1024
+    # Max file size for text scanning (10MB)
+    MAX_TEXT_SIZE = 10 * 1024 * 1024
+    
+    # Max file size for binary scanning (2MB - strings only)
+    MAX_BINARY_SIZE = 2 * 1024 * 1024
     
     def __init__(self, mount_point: Path):
         super().__init__(mount_point)
@@ -127,49 +203,57 @@ class CredentialFileScanner(BaseExtractor):
         return self.scan_all()
     
     def scan_all(self) -> List[Dict[str, Any]]:
-        """Scan entire backup for credential patterns"""
+        """Scan entire backup for credential patterns recursively"""
         findings = []
         
         if not self.mount_point.exists():
             logger.warning(f"Mount point does not exist: {self.mount_point}")
             return findings
         
-        logger.info(f"Scanning {self.mount_point} for hardcoded credentials...")
+        logger.info(f"Scanning {self.mount_point} recursively for hardcoded credentials...")
         
         files_scanned = 0
+        text_files = 0
+        binary_files = 0
         
-        try:
-            for file_path in self.mount_point.rglob('*'):
-                if not file_path.is_file():
+        # Recursive traversal - exhausts entire tree
+        for file_path in self.mount_point.rglob('*'):
+            if not file_path.is_file():
+                continue
+            
+            # Skip based on path
+            if self._should_skip(file_path):
+                continue
+            
+            try:
+                file_size = file_path.stat().st_size
+            except:
+                continue
+            
+            ext = file_path.suffix.lower()
+            
+            # Scan text files with full regex
+            if ext in self.TEXT_EXTENSIONS:
+                if file_size > self.MAX_TEXT_SIZE:
                     continue
-                
-                # Skip binary files and large files
-                try:
-                    if file_path.stat().st_size > self.MAX_FILE_SIZE:
-                        continue
-                except:
-                    continue
-                
-                # Skip based on path
-                if self._should_skip(file_path):
-                    continue
-                
-                # Only scan text files
-                if file_path.suffix.lower() not in self.SCAN_EXTENSIONS:
-                    continue
-                
-                # Scan file
                 file_findings = self._scan_file(file_path)
                 findings.extend(file_findings)
-                files_scanned += 1
-                
-                if files_scanned % 100 == 0:
-                    logger.debug(f"Scanned {files_scanned} files...")
-                    
-        except Exception as e:
-            logger.error(f"Error during credential scanning: {e}")
+                text_files += 1
+            
+            # Scan binary files for embedded strings
+            elif ext in self.BINARY_EXTENSIONS:
+                if file_size > self.MAX_BINARY_SIZE:
+                    continue
+                file_findings = self._scan_binary_file(file_path)
+                findings.extend(file_findings)
+                binary_files += 1
+            
+            files_scanned += 1
+            
+            if files_scanned % 500 == 0:
+                logger.debug(f"Scanned: {files_scanned} files (text: {text_files}, binary: {binary_files})...")
         
-        logger.info(f"Scanned {files_scanned} files, found {len(findings)} credentials")
+        logger.info(f"Scanned {files_scanned} files ({text_files} text, {binary_files} binary), found {len(findings)} credentials")
         return findings
     
     def _should_skip(self, file_path: Path) -> bool:
@@ -181,7 +265,7 @@ class CredentialFileScanner(BaseExtractor):
         return False
     
     def _scan_file(self, file_path: Path) -> List[Dict[str, Any]]:
-        """Scan individual file for credential patterns"""
+        """Scan individual TEXT file for credential patterns"""
         findings = []
         
         try:
@@ -205,7 +289,8 @@ class CredentialFileScanner(BaseExtractor):
                         "file": str(file_path.relative_to(self.mount_point)),
                         "line_hint": content[:match.start()].count('\n') + 1,
                         "value": self._sanitize_value(match.group(), cred_pattern.name),
-                        "context": f"...{context}..."
+                        "context": f"...{context}...",
+                        "scan_type": "text"
                     }
                     findings.append(finding)
             except Exception:
@@ -213,14 +298,66 @@ class CredentialFileScanner(BaseExtractor):
         
         return findings
     
+    def _scan_binary_file(self, file_path: Path) -> List[Dict[str, Any]]:
+        """Scan BINARY file for embedded credential strings"""
+        findings = []
+        
+        try:
+            with open(file_path, 'rb') as f:
+                data = f.read()
+        except Exception:
+            return findings
+        
+        # Extract ASCII strings from binary
+        strings = self._extract_strings(data)
+        
+        # Scan extracted strings for patterns
+        content = '\n'.join(strings)
+        
+        for cred_pattern, compiled in self.compiled_patterns:
+            try:
+                for match in compiled.finditer(content):
+                    finding = {
+                        "type": cred_pattern.name,
+                        "category": cred_pattern.category,
+                        "confidence": cred_pattern.confidence * 0.8,  # Lower confidence for binary
+                        "file": str(file_path.relative_to(self.mount_point)),
+                        "value": self._sanitize_value(match.group(), cred_pattern.name),
+                        "note": "Found in binary file",
+                        "scan_type": "binary"
+                    }
+                    findings.append(finding)
+            except Exception:
+                continue
+        
+        return findings
+    
+    def _extract_strings(self, data: bytes, min_len: int = 6) -> List[str]:
+        """Extract printable ASCII strings from binary data"""
+        strings = []
+        current = []
+        
+        for byte in data:
+            if 32 <= byte <= 126:  # Printable ASCII
+                current.append(chr(byte))
+            else:
+                if len(current) >= min_len:
+                    strings.append(''.join(current))
+                current = []
+        
+        if len(current) >= min_len:
+            strings.append(''.join(current))
+        
+        return strings
+    
     def _sanitize_value(self, value: str, pattern_name: str) -> str:
         """Sanitize found credential value for output"""
         # For private keys/certs, just indicate type
-        if "private_key" in pattern_name or "cert" in pattern_name:
+        if "private_key" in pattern_name or "cert" in pattern_name or "key" in pattern_name:
             return f"[{pattern_name} found]"
         
         # For connection strings, mask password
-        if "conn" in pattern_name.lower():
+        if "conn" in pattern_name.lower() or "url" in pattern_name.lower():
             return re.sub(r':([^@]+)@', ':****@', value)
         
         # For other values, truncate
