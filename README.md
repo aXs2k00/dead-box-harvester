@@ -177,3 +177,4 @@ Educational & Authorized Forensic Use Only
 ---
 
 **⚠️ This tool is provided for authorized security professionals and forensic analysts. Unauthorized access to computer systems is illegal. Always verify you have explicit authorization before using this tool.**
+# dead-box-harvester
