@@ -12,41 +12,63 @@ from .harvester import DeadBoxCredentialHarvester
 def main():
     """CLI entry point"""
     parser = argparse.ArgumentParser(
+        prog="dead-box-harvester",
         description="Windows Dead-Box Credential & PII Harvester",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-  # Basic extraction
-  %(prog)s /path/to/backup
+USAGE EXAMPLES:
+  # Basic extraction (scans current directory as backup)
+  %(prog)s /path/to/windows/backup
 
   # With password for DPAPI decryption
-  %(prog)s /mnt/image --password "userpass" --hashcat
+  %(prog)s /mnt/image --password "userpass"
 
-  # Selective extraction (credentials only, no PII)
-  %(prog)s C:\\backup --no-pii-scan --output ./results
+  # Export in hashcat format for password cracking
+  %(prog)s /backup --password "pass" --hashcat
 
-  # Full forensic analysis with logging
-  %(prog)s /image --password "pass" --hashcat --verbose --log harvest.log
+  # Selective extraction (credentials only, skip PII)
+  %(prog)s /backup --no-pii-scan --output ./results
+
+  # Full forensic analysis with verbose logging
+  %(prog)s /backup --password "pass" --hashcat --verbose --log harvest.log
+
+  # Skip specific modules
+  %(prog)s /backup --no-browser --no-wifi --no-vault
+
+OUTPUT:
+  Results are saved to ./harvester_output/ by default:
+  - harvester_report.json  (full report)
+  - sam_hashes.csv         (NTLM hashes)
+  - hashes_hashcat.txt     (hashcat format)
+  - browser_credentials.csv
+  - wifi_passwords.csv
+  - pii_findings.csv
+
+REQUIREMENTS:
+  - Python 3.8+
+  - Windows filesystem backup (mounted or extracted)
+  - Optional: user password for DPAPI decryption
         """
     )
 
-    parser.add_argument("backup_path", help="Path to Windows backup/image")
-    parser.add_argument("--password", help="User password for DPAPI decryption")
+    parser.add_argument("backup_path", help="Path to Windows backup/image (required)")
+    parser.add_argument("--password", help="User password for DPAPI master key derivation")
     parser.add_argument("--output", "-o", default="./harvester_output",
                        help="Output directory (default: ./harvester_output)")
     parser.add_argument("--hashcat", action="store_true",
-                       help="Export hashes in hashcat format")
+                       help="Export NTLM hashes in hashcat format ($NT$...)")
     parser.add_argument("--no-pii-scan", action="store_true",
-                       help="Disable PII scanning")
+                       help="Disable PII scanning (SSN, API keys, etc.)")
     parser.add_argument("--no-browser", action="store_true",
-                       help="Disable browser credential extraction")
+                       help="Disable browser credential extraction (Chrome, Firefox, Edge)")
     parser.add_argument("--no-wifi", action="store_true",
                        help="Disable WiFi password extraction")
     parser.add_argument("--no-vault", action="store_true",
                        help="Disable Credential Manager extraction")
     parser.add_argument("--verbose", "-v", action="store_true",
-                       help="Verbose output")
-    parser.add_argument("--log", help="Log file path")
+                       help="Enable verbose/debug output")
+    parser.add_argument("--log", metavar="FILE",
+                       help="Write logs to specified file")
     parser.add_argument("--workers", type=int, default=4,
                        help="Number of worker threads (default: 4)")
 
